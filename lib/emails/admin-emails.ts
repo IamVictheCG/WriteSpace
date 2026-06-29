@@ -1,12 +1,12 @@
 import { Resend } from 'resend'
+import { EMAIL_FROM } from './config'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = 'WriterMarket <noreply@writermarket.ng>'
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@writermarket.ng'
 
 export async function sendFlaggedMessageAlert(messageContent: string, matchedPattern: string) {
   await resend.emails.send({
-    from: FROM,
+    from: EMAIL_FROM,
     to: ADMIN_EMAIL,
     subject: 'Flagged message requires review',
     html: `<p>A message has been flagged for contact sharing.</p>
@@ -18,7 +18,7 @@ export async function sendFlaggedMessageAlert(messageContent: string, matchedPat
 
 export async function sendDisputeOpenedAlert(projectTitle: string, disputeReason: string) {
   await resend.emails.send({
-    from: FROM,
+    from: EMAIL_FROM,
     to: ADMIN_EMAIL,
     subject: `Dispute opened: ${projectTitle}`,
     html: `<p>A dispute has been opened for project <strong>${projectTitle}</strong>.</p>

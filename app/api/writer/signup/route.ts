@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { supabaseService } from '@/lib/supabase/service'
 import { writerSignupSchema } from '@/lib/validators/writer-signup.schema'
+import { sendWriterVerificationEmail } from '@/lib/emails/writer-emails'
 
 export async function POST(request: Request) {
   try {
@@ -47,9 +47,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // Create auth user
-    const supabase = await createClient()
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // Create auth user via admin API — generates hashed_token without sending email
+    const { data: linkData, error: authError } = await supabaseService.auth.admin.generateLink({
+      type: 'signup',
       email,
       password,
       options: {
@@ -57,9 +57,12 @@ export async function POST(request: Request) {
       },
     })
 
-    if (authError || !authData.user) {
+    if (authError || !linkData?.user) {
       return NextResponse.json({ error: authError?.message ?? 'Signup failed' }, { status: 400 })
     }
+
+    const authData = { user: linkData.user }
+    const tokenHash = linkData.properties.hashed_token
 
     // Create writer profile
     const { error: profileError } = await supabaseService
@@ -100,6 +103,9 @@ export async function POST(request: Request) {
       // Create wallet for writer
       await supabaseService.from('wallets').insert({ writer_id: profile.id })
     }
+
+    // Send verification email via Resend
+    await sendWriterVerificationEmail(email, tokenHash)
 
     return NextResponse.json({ message: 'Signup successful. Please check your email to verify your account.' })
   } catch {
