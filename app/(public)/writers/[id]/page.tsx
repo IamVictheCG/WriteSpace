@@ -45,7 +45,7 @@ export default async function WriterProfilePage(
 
   // Fetch ratings/reviews
   const { data: reviews } = await supabaseService
-    .from('rating_reviews')
+    .from('ratings_reviews')
     .select(
       `
       id,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 export function ApproveWorkButton({ projectId }: { projectId: string }) {
@@ -34,6 +34,72 @@ export function ApproveWorkButton({ projectId }: { projectId: string }) {
     >
       {loading ? 'Approving...' : 'Approve & Release Payment'}
     </button>
+  )
+}
+
+export function ClientFileUpload({ projectId }: { projectId: string }) {
+  const [uploading, setUploading] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleUpload() {
+    if (!selectedFile) return
+    setMessage(null)
+    setUploading(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      formData.append('project_id', projectId)
+
+      const res = await fetch('/api/projects/files', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setMessage({ type: 'error', text: data.error || 'Upload failed' })
+        return
+      }
+
+      setMessage({ type: 'success', text: 'File uploaded successfully' })
+      setSelectedFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    } catch {
+      setMessage({ type: 'error', text: 'Failed to upload file' })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div>
+      {message && (
+        <div className={`mb-3 rounded-lg p-3 text-sm ${message.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+          {message.text}
+        </div>
+      )}
+      <div className="flex items-center gap-3">
+        <input
+          ref={fileInputRef}
+          type="file"
+          onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+          className="block w-full text-sm text-gray-500 file:mr-4 file:rounded-lg file:border-0 file:bg-green-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-green-700 hover:file:bg-green-100"
+        />
+        {selectedFile && (
+          <button
+            onClick={handleUpload}
+            disabled={uploading}
+            className="shrink-0 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            {uploading ? 'Uploading...' : 'Upload'}
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 

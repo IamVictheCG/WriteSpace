@@ -3,7 +3,7 @@ import { supabaseService } from '@/lib/supabase/service'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import ProjectMessages from './project-messages'
-import { ApproveWorkButton, FileDisputeButton } from './project-actions'
+import { ApproveWorkButton, FileDisputeButton, ClientFileUpload } from './project-actions'
 
 export default async function ProjectDetailPage(
   props: PageProps<'/client/projects/[id]'>
@@ -108,6 +108,14 @@ export default async function ProjectDetailPage(
             projectId={project.id}
             actions={['dispute']}
           />
+        </div>
+      )}
+
+      {/* File upload — separate from chat per spec */}
+      {['active', 'writer_completed'].includes(project.status) && (
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-3 text-lg font-semibold text-gray-900">Project Files</h2>
+          <ClientFileUpload projectId={project.id} />
         </div>
       )}
 

@@ -113,6 +113,11 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })
     }
 
+    // Keep user_metadata.username in sync for the layout header
+    await supabaseService.auth.admin.updateUserById(auth.userId, {
+      user_metadata: { username: profileFields.username },
+    })
+
     // Update categories: delete old, insert new
     const { data: profile } = await supabaseService
       .from('writer_profiles')

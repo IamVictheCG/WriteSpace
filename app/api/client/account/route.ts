@@ -50,6 +50,11 @@ export async function PATCH(request: Request) {
       .update({ username: parsed.data.username, updated_at: new Date().toISOString() })
       .eq('user_id', auth.userId)
 
+    // Keep user_metadata.username in sync for the layout header
+    await supabaseService.auth.admin.updateUserById(auth.userId, {
+      user_metadata: { username: parsed.data.username },
+    })
+
     return NextResponse.json({ message: 'Updated' })
   } catch (err) {
     return handleAuthError(err)

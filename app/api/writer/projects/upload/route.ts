@@ -1,6 +1,22 @@
 import { NextResponse } from 'next/server'
 import { supabaseService } from '@/lib/supabase/service'
 import { requireRole, handleAuthError } from '@/lib/access/require-role'
+import { z } from 'zod'
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]
+
+const fileUploadSchema = z.object({
+  project_id: z.string().uuid(),
+})
 
 export async function POST(request: Request) {
   try {
@@ -10,8 +26,17 @@ export async function POST(request: Request) {
     const file = formData.get('file') as File | null
     const projectId = formData.get('project_id') as string | null
 
-    if (!file || !projectId) {
-      return NextResponse.json({ error: 'File and project_id required' }, { status: 400 })
+    const parsed = fileUploadSchema.safeParse({ project_id: projectId })
+    if (!parsed.success || !file) {
+      return NextResponse.json({ error: 'Valid file and project_id required' }, { status: 400 })
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: 'File size exceeds 50 MB limit' }, { status: 400 })
+    }
+
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      return NextResponse.json({ error: 'File type not allowed' }, { status: 400 })
     }
 
     // Verify project exists and writer is assigned to it

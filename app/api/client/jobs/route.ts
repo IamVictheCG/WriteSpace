@@ -3,6 +3,7 @@ import { supabaseService } from '@/lib/supabase/service'
 import { requireRole, handleAuthError } from '@/lib/access/require-role'
 import { jobPostSchema } from '@/lib/validators/job-post.schema'
 import { calculateResponseDeadline } from '@/lib/utils/response-window'
+import { sendJobMatchNotification } from '@/lib/emails/writer-emails'
 
 export async function POST(request: Request) {
   try {
@@ -49,12 +50,25 @@ export async function POST(request: Request) {
     }
 
     // Notify writers in this category (fire and forget)
-    const { data: writers } = await supabaseService
-      .from('writer_categories')
-      .select('writer_id, writer_profiles!inner(user_id)')
-      .eq('category_id', parsed.data.category_id)
-
-    // Email notifications would be sent here via sendJobMatchNotification
+    Promise.resolve(
+      supabaseService
+        .from('writer_categories')
+        .select('category_id, writer_profiles!inner(user_id, username)')
+        .eq('category_id', parsed.data.category_id)
+    ).then(({ data: writers }) => {
+      if (!writers) return
+      const seen = new Set<string>()
+      for (const w of writers) {
+        const profile = w.writer_profiles as unknown as { user_id: string; username: string }
+        if (seen.has(profile.user_id)) continue
+        seen.add(profile.user_id)
+        supabaseService.auth.admin.getUserById(profile.user_id).then(({ data }) => {
+          if (data?.user?.email) {
+            sendJobMatchNotification(data.user.email, parsed.data.title, job.id).catch(() => {})
+          }
+        })
+      }
+    }).catch(() => {})
 
     return NextResponse.json({ id: job.id, message: 'Job posted successfully' })
   } catch (err) {
